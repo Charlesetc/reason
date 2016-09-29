@@ -4875,7 +4875,6 @@ class printer  ()= object(self:'self)
         (self#core_type ct)
     | Pctf_method (s, pf, vf, ct) ->
       let methodFlags = self#method_sig_flags_for (s ^ ":") (pf, vf) in
-      let (_, _, stdAttrs, _) = partitionAttributes x.pctf_attributes in
       formatAttributed
         (label
           ~space:true
@@ -4884,7 +4883,7 @@ class printer  ()= object(self:'self)
               (makeList ~postSpace:true ~inline:(false, true) ~break:IfNeed methodFlags)
           )
           (self#core_type ct))
-        (self#attributes stdAttrs)
+        (self#attributes x.pctf_attributes)
     | Pctf_constraint (ct1, ct2) ->
       label
         (atom "constraint")
@@ -4925,7 +4924,6 @@ class printer  ()= object(self:'self)
             label ~space:true (atom "as") (self#core_type ct) ::
             instTypeFields
         in
-        let (_, _, stdAttrs, _) = partitionAttributes x.pcty_attributes in
         formatAttributed
           (makeList
             ~wrap:("{", "}")
@@ -4933,7 +4931,7 @@ class printer  ()= object(self:'self)
             ~break:Always_rec
             ~sep:";"
             allItems)
-          (self#attributes stdAttrs)
+          (self#attributes x.pcty_attributes)
     | Pcty_constr (li, l) -> (
         match l with
           | [] -> self#longident_loc li
