@@ -74,6 +74,7 @@ type error =
   | Illegal_character of char
   | Illegal_escape of string
   | Unterminated_comment of Location.t
+  | Unterminated_qparen of Location.t
   | Unterminated_string
   | Unterminated_string_in_comment of Location.t * Location.t
   | Keyword_as_label of string
@@ -185,6 +186,7 @@ let get_stored_string () =
 (* To store the position of the beginning of a string and comment *)
 let string_start_loc = ref Location.none;;
 let comment_start_loc = ref [];;
+let qparen_start_loc = ref [];;
 let in_comment () = !comment_start_loc <> [];;
 let is_in_string = ref false
 let in_string () = !is_in_string
@@ -330,6 +332,8 @@ let report_error ppf = function
       fprintf ppf "Illegal backslash escape in string or character (%s)" s
   | Unterminated_comment _ ->
       fprintf ppf "Comment not terminated"
+  | Unterminated_qparen _ ->
+      fprintf ppf "Backquote-parentheses not terminated"
   | Unterminated_string ->
       fprintf ppf "String literal not terminated"
   | Unterminated_string_in_comment (_, loc) ->
@@ -425,6 +429,11 @@ rule token = parse
       { let s = Lexing.lexeme lexbuf in
         try Hashtbl.find keyword_table s
         with Not_found -> LIDENT s }
+  | "$" identchar *
+      {
+        let tlm_name = Lexing.lexeme lexbuf in
+        let tlm_name = String.sub tlm_name 1 (String.length tlm_name - 1) in
+        RELIT_IDENT tlm_name }
   | lowercase_latin1 identchar_latin1 *
       { warn_latin1 lexbuf; LIDENT (Lexing.lexeme lexbuf) }
   | uppercase identchar *
@@ -523,6 +532,16 @@ rule token = parse
   | "[|" { LBRACKETBAR }
   | "[<" { LBRACKETLESS }
   | "[>" { LBRACKETGREATER }
+  | "`("
+      { set_lexeme_length lexbuf 2;
+        let start_loc = Location.curr lexbuf in
+        qparen_start_loc := [start_loc];
+        reset_string_buffer ();
+        let Location.{loc_end; _} = qparen lexbuf in
+        let s, _ = get_stored_string () in
+        reset_string_buffer ();
+        RELIT_QUOTED (s, Location.{ start_loc with loc_end })
+      }
   | "<" (uppercase identchar* '.')* lowercase identchar* {
     let buf = Lexing.lexeme lexbuf in
     LESSIDENT (String.sub buf 1 (String.length buf - 1))
@@ -658,6 +677,36 @@ rule token = parse
       { raise (Error(Illegal_character (Lexing.lexeme_char lexbuf 0),
                      Location.curr lexbuf))
       }
+
+and qparen = parse
+  | "`("
+      { qparen_start_loc := (Location.curr lexbuf) :: !qparen_start_loc;
+        store_lexeme string_buffer lexbuf;
+        qparen lexbuf;
+      }
+  | ")`"
+      { match !qparen_start_loc with
+        | [] -> assert false
+        | [_] -> qparen_start_loc := []; Location.curr lexbuf
+        | _ :: l -> qparen_start_loc := l;
+                  store_lexeme string_buffer lexbuf;
+                  qparen lexbuf;
+       }
+  | eof
+      { match !qparen_start_loc with
+        | [] -> assert false
+        | loc :: _ ->
+          let start = List.hd (List.rev !qparen_start_loc) in
+          qparen_start_loc := [];
+          raise (Error (Unterminated_qparen start, loc))
+      }
+  | newline
+      { update_loc lexbuf None 1 false 0;
+        store_lexeme string_buffer lexbuf;
+        qparen lexbuf
+      }
+  | _
+      { store_lexeme string_buffer lexbuf; qparen lexbuf }
 
 and enter_comment = parse
   | "/*" ("*" "*"+)?
@@ -1096,3 +1145,4 @@ and skip_sharp_bang = parse
     preprocessor := Some (init, preprocess)
 
 }
+
