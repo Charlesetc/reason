@@ -2005,7 +2005,7 @@ let relit_literal name body ppf _ =
   let prefix = "RelitInternalDefn_" in
   let plen = String.length prefix in
   let name = String.sub name plen (String.length name - plen) in
-  Format.fprintf ppf "[@relit] $%s `(%s)`" name body
+  Format.fprintf ppf "$%s `(%s)`" name body
 
 let is_punned_labelled_expression e lbl = match e.pexp_desc with
   | Pexp_ident { txt }
