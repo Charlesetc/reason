@@ -333,7 +333,7 @@ let report_error ppf = function
   | Unterminated_comment _ ->
       fprintf ppf "Comment not terminated"
   | Unterminated_qparen _ ->
-      fprintf ppf "Backquote-parentheses not terminated"
+      fprintf ppf "Generalized literal not terminated"
   | Unterminated_string ->
       fprintf ppf "String literal not terminated"
   | Unterminated_string_in_comment (_, loc) ->
