@@ -1179,6 +1179,8 @@ let package_type_of_module_type pmty =
 %token EQUALGREATER
 %token LET
 %token <string> LIDENT
+%token <string> RELIT_IDENT
+%token <string * Location.t> RELIT_QUOTED
 %token LPAREN
 %token LBRACKETAT
 %token OF
@@ -3019,6 +3021,25 @@ parenthesized_expr:
     { mkexp (Pexp_variant ($1, None)) }
   | LPAREN expr_list RPAREN
     { may_tuple $startpos $endpos $2 }
+  | tlm_name = RELIT_IDENT tlm = RELIT_QUOTED
+    {
+      let (source, loc) = tlm in
+      let construct =
+        Pexp_construct (
+          mkloc (Ldot (Lident ("RelitInternalDefn_" ^ tlm_name), "Call")) loc,
+          Some (mkexp (Pexp_tuple [
+              mkexp (Pexp_constant (Pconst_string
+                  ("You're using relit syntax without the relit ppx!", None)));
+              mkexp (Pexp_constant (Pconst_string (source, None)))
+            ]))
+        )
+      in
+      mkexp (Pexp_apply (mkexp (Pexp_ident (mkloc (Lident "raise") loc)),
+                         [Asttypes.Nolabel,
+                          {pexp_loc = loc;
+                           pexp_attributes = [mkloc "relit" loc, PSig []];
+                           pexp_desc = construct }]))
+    }
   | as_loc(LPAREN) expr_list as_loc(error)
     { unclosed_exp (with_txt $1 "(") (with_txt $3 ")") }
   | E as_loc(POSTFIXOP)
