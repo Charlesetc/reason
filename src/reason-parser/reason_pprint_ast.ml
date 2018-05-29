@@ -1948,6 +1948,12 @@ let constant ?raw_literal ?(parens=true) ppf = function
     paren (parens && i.[0] = '-')
       (fun ppf (i,m) -> Format.fprintf ppf "%s%c" i m) ppf (i,m)
 
+let relit_literal name body ppf _ =
+  let prefix = "RelitInternalDefn_" in
+  let plen = String.length prefix in
+  let name = String.sub name plen (String.length name - plen) in
+  Format.fprintf ppf "[@relit] $%s `(%s)`" name body
+
 let is_punned_labelled_expression e lbl = match e.pexp_desc with
   | Pexp_ident { txt }
   | Pexp_constraint ({pexp_desc = Pexp_ident { txt }}, _)
@@ -2344,6 +2350,9 @@ let printer = object(self:'self)
 
   method constant ?raw_literal ?(parens=true) =
     wrap (constant ?raw_literal ~parens)
+
+  method relit_literal name body =
+    wrap (relit_literal name body) ()
 
   method constant_string = wrap constant_string
   method tyvar = wrap tyvar
@@ -3313,6 +3322,18 @@ let printer = object(self:'self)
     atom cls;
   ]
 
+  method relit_expression x =
+    match x.pexp_desc with
+    | Pexp_apply (
+        {pexp_desc = Pexp_ident {txt = Lident "raise"; _}},
+        [(_, { pexp_desc = Pexp_construct ({txt = Ldot (lident, "Call"); _},
+              Some {pexp_desc = Pexp_tuple [_ ;
+                {pexp_desc =
+                  Pexp_constant (Pconst_string (source, _)); _}]; _} )})]) ->
+      (* raise (Failure "debug"); *)
+      let name = Longident.last lident in
+      Some (self#relit_literal name source)
+    | _ -> None
 
   method simple_get_application x =
     let {stdAttrs; jsxAttrs} = partitionAttributes x.pexp_attributes in
@@ -3847,6 +3868,9 @@ let printer = object(self:'self)
     let x = self#process_underscore_application x in
     (* If there are any attributes, render unary like `(~-) x [@ppx]`, and infix like `(+) x y [@attr]` *)
 
+    match self#relit_expression x with
+    | Some se -> Simple se
+    | None ->
     let {arityAttrs; stdAttrs; jsxAttrs; literalAttrs; uncurried} =
       partitionAttributes ~allowUncurry:(Reason_heuristics.bsExprCanBeUncurried x) x.pexp_attributes
     in
