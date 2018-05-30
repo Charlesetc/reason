@@ -122,7 +122,6 @@ let keyword_table =
     "switch", SWITCH;
     "module", MODULE;
     "notation", NOTATION;
-    "at", AT;
     "pub", PUB;
     "mutable", MUTABLE;
     "new", NEW;

@@ -367,6 +367,35 @@ let simple_pattern_list_to_tuple ?(loc=dummy_loc ()) = function
   | [] -> assert false
   | lst -> mkpat ~loc (Ppat_tuple lst)
 
+let mknotation ~name ~loc ~structure:dependencies
+               ~parser_ ~lexer ~package ~core_type =
+  let convert name prefix =
+      { txt = prefix ^ (name |> Longident.flatten
+                             |>  String.concat "__RelitInternal_dot__");
+        loc } in
+
+  let parser_name = convert parser_ "Parser_" in
+  let lexer_name = convert lexer "Lexer_" in
+  let package_name = convert package "Package_" in
+
+  let string_t = Typ.constr {txt = Lident "string" ; loc } [] in
+  let exn_type = Pext_decl (Pcstr_tuple [string_t; string_t], None) in
+
+  let structure = [
+    Str.type_ Nonrecursive [Type.mk {txt = "t"; loc} ~manifest:core_type];
+    Str.module_ (Mb.mk parser_name (Mod.structure []) );
+    Str.module_ (Mb.mk lexer_name (Mod.structure []) );
+    Str.module_ (Mb.mk package_name (Mod.structure []) );
+    Str.module_ (Mb.mk {txt = "Dependencies"; loc}
+                       (Mod.structure dependencies));
+    Str.exception_ {pext_name = {txt = "Call"; loc};
+                    pext_kind = exn_type;
+                    pext_loc = loc;
+                    pext_attributes = []};
+  ] in
+  let module_name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+  Str.module_ (Mb.mk module_name (Mod.structure structure) ~loc)
+
 let mktailexp_extension loc seq ext_opt =
   let rec handle_seq = function
     | [] ->
@@ -1726,36 +1755,33 @@ structure_item:
       { let loc = mklocation $symbolstartpos $endpos in
         mkstr(Pstr_module (Mb.mk $2 $3 ~attrs:$1 ~loc)) }
     | item_attributes NOTATION name = RELIT_IDENT
-      AT c = core_type LBRACE
+      kwd1 = LIDENT core_type = core_type LBRACE
         LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
         IN package = lowercase_longident SEMI
       RBRACE
       { let loc = mklocation $symbolstartpos $endpos in
-
-        let convert name prefix =
-            { txt = prefix ^ (name |> Longident.flatten
-                                   |>  String.concat "__RelitInternal_dot__");
-              loc } in
-
-        let parser_name = convert parser_ "Parser_" in
-        let lexer_name = convert lexer "Lexer_" in
-        let package_name = convert package "Package_" in
-
-        let string_t = Typ.constr {txt = Lident "string" ; loc } [] in
-        let exn_type = Pext_decl (Pcstr_tuple [string_t; string_t], None) in
-
-        let structure = [
-          Str.type_ Nonrecursive [Type.mk {txt = "t"; loc} ~manifest:c];
-          Str.module_ (Mb.mk parser_name (Mod.structure []) );
-          Str.module_ (Mb.mk lexer_name (Mod.structure []) );
-          Str.module_ (Mb.mk package_name (Mod.structure []) );
-          Str.exception_ {pext_name = {txt = "Call"; loc};
-                          pext_kind = exn_type;
-                          pext_loc = loc;
-                          pext_attributes = []};
-        ] in
-        let module_name = {txt = "RelitInternalDefn_" ^ name ; loc} in
-        Str.module_ (Mb.mk module_name (Mod.structure structure) ~loc)
+        if not (String.equal kwd1 "at") then
+          raise (Failure "supposed to be at");
+        mknotation ~loc ~name ~structure:[] ~lexer
+                   ~parser_ ~package ~core_type }
+    | item_attributes NOTATION name = RELIT_IDENT
+      kwd1 = LIDENT core_type = core_type LBRACE
+        LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
+        IN package = lowercase_longident SEMI
+        kwd2 = LIDENT md_expr = module_expr_structure SEMI
+      RBRACE
+      {
+        let loc = mklocation $symbolstartpos $endpos in
+        if not (String.equal kwd1 "at") then
+          raise (Failure "supposed to be at");
+        if not (String.equal kwd2 "dependencies") then
+          raise (Failure "supposed to be dependencies");
+        let structure = match md_expr.pmod_desc with
+            | Pmod_structure structure -> structure
+            | _ -> raise (Failure "dependencies in a notation is supposed to be a structure.")
+        in
+        mknotation ~loc ~structure:structure ~lexer
+                   ~parser_ ~package ~core_type ~name
       }
     | item_attributes opt_LET_MODULE_REC_ident module_binding_body
       and_module_bindings*
