@@ -7199,6 +7199,7 @@ let printer = object(self:'self)
             {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = package_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_expr; _}; _} ::
           _ ); _ } ->
             let convert name =
               let index = String.index name '_' + 1 in
@@ -7211,6 +7212,9 @@ let printer = object(self:'self)
                                       atom "and"; atom "parser";
                                       atom (convert parser_name); atom "in";
                                       atom (convert package_name)];
+              makeList ~sep:(Sep " ") [
+                  atom "dependencies";
+                  self#module_expr pmb_expr];
             ] in
             makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";
                                      self#core_type core_type; body ]
