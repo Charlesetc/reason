@@ -3066,12 +3066,31 @@ parenthesized_expr:
     { mkexp (Pexp_variant ($1, None)) }
   | LPAREN expr_list RPAREN
     { may_tuple $startpos $endpos $2 }
-  | tlm_name = RELIT_IDENT tlm = RELIT_QUOTED
+  | ident = RELIT_IDENT tlm = RELIT_QUOTED
     {
       let (source, loc) = tlm in
       let construct =
         Pexp_construct (
-          mkloc (Ldot (Lident ("RelitInternalDefn_" ^ tlm_name), "Call")) loc,
+          mkloc (Ldot (Lident ("RelitInternalDefn_" ^ ident), "Call")) loc,
+          Some (mkexp (Pexp_tuple [
+              mkexp (Pexp_constant (Pconst_string
+                  ("You're using relit syntax without the relit ppx!", None)));
+              mkexp (Pexp_constant (Pconst_string (source, None)))
+            ]))
+        )
+      in
+      mkexp (Pexp_apply (mkexp (Pexp_ident (mkloc (Lident "raise") loc)),
+                         [Asttypes.Nolabel,
+                          {pexp_loc = loc;
+                           pexp_attributes = [mkloc "relit" loc, PSig []];
+                           pexp_desc = construct }]))
+    }
+  | longident = mod_longident DOT ident = RELIT_IDENT tlm = RELIT_QUOTED
+    {
+      let (source, loc) = tlm in
+      let construct =
+        Pexp_construct (
+          mkloc (Ldot (Ldot (longident, ("RelitInternalDefn_" ^ ident)), "Call")) loc,
           Some (mkexp (Pexp_tuple [
               mkexp (Pexp_constant (Pconst_string
                   ("You're using relit syntax without the relit ppx!", None)));
@@ -4715,11 +4734,6 @@ mod_longident:
   | UIDENT                        { Lident $1 }
   | mod_longident DOT UIDENT      { Ldot($1, $3) }
 ;
-
-(* notation_longident: *)
-(*   | RELIT_IDENT                   { Lident $1 } *)
-(*   | mod_longident DOT RELIT_IDENT { Ldot($1, $3) } *)
-(* ; *)
 
 mod_ext_longident: imod_ext_longident { $1 }
 
