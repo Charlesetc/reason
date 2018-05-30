@@ -7273,6 +7273,7 @@ let printer = object(self:'self)
             {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = package_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = nonterminal_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_expr; _}; _} ::
           _ ); _ } ->
             let convert name =
@@ -7284,10 +7285,16 @@ let printer = object(self:'self)
             let body = makeLetSequence [
               makeList ~sep:(Sep " ") [atom "lexer"; atom (convert lexer_name);
                                       atom "and"; atom "parser";
-                                      atom (convert parser_name); atom "in";
+                                      makeList [
+                                        atom (convert parser_name);
+                                        atom ".";
+                                        atom (convert nonterminal_name);
+                                      ];
+                                      atom "in";
                                       atom (convert package_name)];
               makeList ~sep:(Sep " ") [
-                  atom "dependencies"; atom "=";
+                  atom "dependencies";
+                  atom "=";
                   self#module_expr pmb_expr];
             ] in
             makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";

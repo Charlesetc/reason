@@ -367,7 +367,7 @@ let simple_pattern_list_to_tuple ?(loc=dummy_loc ()) = function
   | [] -> assert false
   | lst -> mkpat ~loc (Ppat_tuple lst)
 
-let mknotation ~name ~loc ~structure:dependencies
+let mknotation ~name ~loc ~structure:dependencies ~nonterminal
                ~parser_ ~lexer ~package ~core_type =
   let convert name prefix =
       { txt = prefix ^ (name |> Longident.flatten
@@ -377,6 +377,7 @@ let mknotation ~name ~loc ~structure:dependencies
   let parser_name = convert parser_ "Parser_" in
   let lexer_name = convert lexer "Lexer_" in
   let package_name = convert package "Package_" in
+  let nonterminal_name = {txt = "Nonterminal_" ^ nonterminal ; loc} in
 
   let string_t = Typ.constr {txt = Lident "string" ; loc } [] in
   let exn_type = Pext_decl (Pcstr_tuple [string_t; string_t], None) in
@@ -386,6 +387,7 @@ let mknotation ~name ~loc ~structure:dependencies
     Str.module_ (Mb.mk parser_name (Mod.structure []) );
     Str.module_ (Mb.mk lexer_name (Mod.structure []) );
     Str.module_ (Mb.mk package_name (Mod.structure []) );
+    Str.module_ (Mb.mk nonterminal_name (Mod.structure []) );
     Str.module_ (Mb.mk {txt = "Dependencies"; loc}
                        (Mod.structure dependencies));
     Str.exception_ {pext_name = {txt = "Call"; loc};
@@ -1742,17 +1744,19 @@ structure_item:
         mkstr(Pstr_module (Mb.mk $2 $3 ~attrs:$1 ~loc)) }
     | item_attributes NOTATION name = RELIT_IDENT
       kwd1 = LIDENT core_type = core_type LBRACE
-        LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
+        LEXER lexer = mod_longident
+        AND PARSER parser_ = mod_longident DOT nonterminal = LIDENT
         IN package = lowercase_longident SEMI
       RBRACE
       { let loc = mklocation $symbolstartpos $endpos in
         if not (String.equal kwd1 "at") then
           raise (Failure "supposed to be at");
-        mknotation ~loc ~name ~structure:[] ~lexer
+        mknotation ~loc ~name ~structure:[] ~lexer ~nonterminal
                    ~parser_ ~package ~core_type }
     | item_attributes NOTATION name = RELIT_IDENT
       kwd1 = LIDENT core_type = core_type LBRACE
-        LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
+        LEXER lexer = mod_longident
+        AND PARSER parser_ = mod_longident DOT nonterminal = LIDENT
         IN package = lowercase_longident SEMI
         kwd2 = LIDENT EQUAL md_expr = module_expr_structure
       RBRACE
@@ -1766,7 +1770,7 @@ structure_item:
             | Pmod_structure structure -> structure
             | _ -> raise (Failure "dependencies in a notation is supposed to be a structure.")
         in
-        mknotation ~loc ~structure:structure ~lexer
+        mknotation ~loc ~structure:structure ~lexer ~nonterminal
                    ~parser_ ~package ~core_type ~name
       }
     | item_attributes opt_LET_MODULE_REC_ident module_binding_body
