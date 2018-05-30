@@ -121,6 +121,8 @@ let keyword_table =
     "let", LET;
     "switch", SWITCH;
     "module", MODULE;
+    "notation", NOTATION;
+    "at", AT;
     "pub", PUB;
     "mutable", MUTABLE;
     "new", NEW;
@@ -129,7 +131,8 @@ let keyword_table =
     "of", OF;
     "open", OPEN;
     "or", OR;
-(*  "parser", PARSER; *)
+    "parser", PARSER;
+    "lexer", LEXER;
     "pri", PRI;
     "rec", REC;
     "sig", SIG;

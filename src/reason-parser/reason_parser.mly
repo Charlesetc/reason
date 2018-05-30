@@ -1190,6 +1190,8 @@ let package_type_of_module_type pmty =
 %token MINUSDOT
 %token MINUSGREATER
 %token MODULE
+%token NOTATION
+%token AT
 %token MUTABLE
 %token <nativeint> NATIVEINT
 %token NEW
@@ -1197,7 +1199,8 @@ let package_type_of_module_type pmty =
 %token OBJECT
 %token OPEN
 %token OR
-(* %token PARSER *)
+%token PARSER
+%token LEXER
 %token PERCENT
 %token PLUS
 %token PLUSDOT
@@ -1722,6 +1725,38 @@ structure_item:
     | item_attributes opt_LET_MODULE_ident module_binding_body
       { let loc = mklocation $symbolstartpos $endpos in
         mkstr(Pstr_module (Mb.mk $2 $3 ~attrs:$1 ~loc)) }
+    | item_attributes NOTATION name = RELIT_IDENT
+      AT c = core_type LBRACE
+        LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
+        IN package = lowercase_longident SEMI
+      RBRACE
+      { let loc = mklocation $symbolstartpos $endpos in
+
+        let convert name prefix =
+            { txt = prefix ^ (name |> Longident.flatten
+                                   |>  String.concat "__RelitInternal_dot__");
+              loc } in
+
+        let parser_name = convert parser_ "Parser_" in
+        let lexer_name = convert lexer "Lexer_" in
+        let package_name = convert package "Package_" in
+
+        let string_t = Typ.constr {txt = Lident "string" ; loc } [] in
+        let exn_type = Pext_decl (Pcstr_tuple [string_t; string_t], None) in
+
+        let structure = [
+          Str.type_ Nonrecursive [Type.mk {txt = "t"; loc} ~manifest:c];
+          Str.module_ (Mb.mk parser_name (Mod.structure []) );
+          Str.module_ (Mb.mk lexer_name (Mod.structure []) );
+          Str.module_ (Mb.mk package_name (Mod.structure []) );
+          Str.exception_ {pext_name = {txt = "Call"; loc};
+                          pext_kind = exn_type;
+                          pext_loc = loc;
+                          pext_attributes = []};
+        ] in
+        let module_name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+        Str.module_ (Mb.mk module_name (Mod.structure structure) ~loc)
+      }
     | item_attributes opt_LET_MODULE_REC_ident module_binding_body
       and_module_bindings*
       { let loc = mklocation $symbolstartpos $endpos($2) in
@@ -4691,6 +4726,11 @@ mod_longident:
   | mod_longident DOT UIDENT      { Ldot($1, $3) }
 ;
 
+(* notation_longident: *)
+(*   | RELIT_IDENT                   { Lident $1 } *)
+(*   | mod_longident DOT RELIT_IDENT { Ldot($1, $3) } *)
+(* ; *)
+
 mod_ext_longident: imod_ext_longident { $1 }
 
 %inline imod_ext_longident:
@@ -4721,6 +4761,11 @@ clty_longident:
 class_longident:
   | LIDENT                       { Lident $1 }
   | mod_longident DOT LIDENT     { Ldot($1, $3) }
+;
+
+lowercase_longident:
+  | LIDENT { Lident $1 }
+  | lowercase_longident DOT LIDENT { Ldot($1, $3) }
 ;
 
 (* Toplevel directives *)

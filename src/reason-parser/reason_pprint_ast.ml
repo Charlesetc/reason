@@ -7192,6 +7192,31 @@ let printer = object(self:'self)
         | (Concrete, _::_) ->
           (firstToken, atom name, [self#class_params_def ls])
 
+  method notation name = function
+    | {pmod_desc =  Pmod_structure 
+          (
+            {pstr_desc = Pstr_type (_, [{ptype_manifest = Some core_type; _}]); _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = package_name ; _ } ; _}; _ } ::
+          _ ); _ } ->
+            let convert name =
+              let index = String.index name '_' + 1 in
+              String.sub name index (String.length name - index)
+              |> Str.split (Str.regexp "__RelitInternal_dot__")
+              |> String.concat "."
+            in
+            let body = makeLetSequence [
+              makeList ~sep:(Sep " ") [atom "lexer"; atom (convert lexer_name);
+                                      atom "and"; atom "parser";
+                                      atom (convert parser_name); atom "in";
+                                      atom (convert package_name)];
+            ] in
+            makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";
+                                     self#core_type core_type; body ]
+            (* raise (Failure (convert parser_name)) *)
+
+    | _ -> raise Not_found
 
   (* TODO: TODOATTRIBUTES: Structure items don't have attributes, but each
      pstr_desc *)
@@ -7216,9 +7241,19 @@ let printer = object(self:'self)
         | Pstr_typext te -> (self#type_extension te)
         | Pstr_exception ed -> (self#exception_declaration ed)
         | Pstr_module x ->
-            let bindingName = atom ~loc:x.pmb_name.loc x.pmb_name.txt in
-            self#attach_std_item_attrs x.pmb_attributes @@
-            self#let_module_binding "module" bindingName x.pmb_expr
+            let relit_prefix = "RelitInternalDefn_" in
+            let plen = String.length relit_prefix in
+            let module_name = x.pmb_name.txt in
+            if (String.length module_name > plen)
+               && String.sub module_name 0 plen = relit_prefix
+            then
+              let name = "$" ^
+                String.sub module_name plen (String.length module_name - plen) in
+              self#notation name x.pmb_expr
+            else
+              let bindingName = atom ~loc:x.pmb_name.loc module_name in
+              self#attach_std_item_attrs x.pmb_attributes @@
+              self#let_module_binding "module" bindingName x.pmb_expr
         | Pstr_open od ->
             self#attach_std_item_attrs od.popen_attributes @@
             makeList ~postSpace:true [
