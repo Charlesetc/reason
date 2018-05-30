@@ -2001,12 +2001,6 @@ let constant ?raw_literal ?(parens=true) ppf = function
     paren (parens && i.[0] = '-')
       (fun ppf (i,m) -> Format.fprintf ppf "%s%c" i m) ppf (i,m)
 
-let relit_literal name body ppf _ =
-  let prefix = "RelitInternalDefn_" in
-  let plen = String.length prefix in
-  let name = String.sub name plen (String.length name - plen) in
-  Format.fprintf ppf "$%s `(%s)`" name body
-
 let is_punned_labelled_expression e lbl = match e.pexp_desc with
   | Pexp_ident { txt }
   | Pexp_constraint ({pexp_desc = Pexp_ident { txt }}, _)
@@ -2404,8 +2398,6 @@ let printer = object(self:'self)
   method constant ?raw_literal ?(parens=true) =
     wrap (constant ?raw_literal ~parens)
 
-  method relit_literal name body =
-    wrap (relit_literal name body) ()
 
   method constant_string = wrap constant_string
   method tyvar = wrap tyvar
@@ -3375,6 +3367,9 @@ let printer = object(self:'self)
     atom cls;
   ]
 
+  method relit_literal name body =
+    wrap (fun ppf _ -> Format.fprintf ppf "%s `(%s)`" name body) ()
+
   method relit_expression x =
     match x.pexp_desc with
     | Pexp_apply (
@@ -3383,9 +3378,18 @@ let printer = object(self:'self)
               Some {pexp_desc = Pexp_tuple [_ ;
                 {pexp_desc =
                   Pexp_constant (Pconst_string (source, _)); _}]; _} )})]) ->
-      (* raise (Failure "debug"); *)
-      let name = Longident.last lident in
-      Some (self#relit_literal name source)
+      let swap_prefix name = 
+        let prefix = "RelitInternalDefn_" in
+        let plen = String.length prefix in
+        "$" ^ String.sub name plen (String.length name - plen)
+      in
+      let ident = match lident with
+        | Ldot (lident, name) -> Ldot (lident, swap_prefix name)
+        | Lident name -> Lident (swap_prefix name)
+        | Lapply (_, _) -> assert false
+      in
+      let lident_name i = Longident.flatten i |> String.concat "." in
+      Some (self#relit_literal (lident_name ident) source)
     | _ -> None
 
   method simple_get_application x =
