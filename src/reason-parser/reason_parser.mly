@@ -1754,7 +1754,7 @@ structure_item:
       kwd1 = LIDENT core_type = core_type LBRACE
         LEXER lexer = mod_longident AND PARSER parser_ = mod_longident
         IN package = lowercase_longident SEMI
-        kwd2 = LIDENT md_expr = module_expr_structure SEMI
+        kwd2 = LIDENT EQUAL md_expr = module_expr_structure
       RBRACE
       {
         let loc = mklocation $symbolstartpos $endpos in

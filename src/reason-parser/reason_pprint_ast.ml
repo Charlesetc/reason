@@ -7283,7 +7283,7 @@ let printer = object(self:'self)
                                       atom (convert parser_name); atom "in";
                                       atom (convert package_name)];
               makeList ~sep:(Sep " ") [
-                  atom "dependencies";
+                  atom "dependencies"; atom "=";
                   self#module_expr pmb_expr];
             ] in
             makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";
