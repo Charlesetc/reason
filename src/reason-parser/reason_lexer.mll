@@ -431,7 +431,7 @@ rule token = parse
       { let s = Lexing.lexeme lexbuf in
         try Hashtbl.find keyword_table s
         with Not_found -> LIDENT s }
-  | "$" identchar *
+  | "$" identchar +
       {
         let tlm_name = Lexing.lexeme lexbuf in
         let tlm_name = String.sub tlm_name 1 (String.length tlm_name - 1) in
