@@ -2342,6 +2342,26 @@ let groupAndPrint ~xf ~getLoc ~comments items =
       List.concat (group (getLoc first) [] [] (first::rest))
   | [] -> []
 
+let relit_convert ?prefix:(prefix = true) name =
+  (if prefix then
+    let index = String.index name '_' + 1 in
+    String.sub name index (String.length name - index)
+  else name)
+  |> Str.split (Str.regexp "__RelitInternal_dot__")
+  |> String.concat "."
+
+let relit_swap_prefix lident =
+  let swap_prefix name = 
+    let prefix = "RelitInternalDefn_" in
+    let plen = String.length prefix in
+    "$" ^ String.sub name plen (String.length name - plen)
+  in
+  (match lident with
+    | Ldot (lident, name) -> Ldot (lident, swap_prefix name)
+    | Lident name -> Lident (swap_prefix name)
+    | Lapply (_, _) -> assert false)
+  |> Longident.flatten |> String.concat "."
+
 let printer = object(self:'self)
   val pipe = false
   val semi = false
@@ -3378,18 +3398,7 @@ let printer = object(self:'self)
               Some {pexp_desc = Pexp_tuple [_ ;
                 {pexp_desc =
                   Pexp_constant (Pconst_string (source, _)); _}]; _} )})]) ->
-      let swap_prefix name = 
-        let prefix = "RelitInternalDefn_" in
-        let plen = String.length prefix in
-        "$" ^ String.sub name plen (String.length name - plen)
-      in
-      let ident = match lident with
-        | Ldot (lident, name) -> Ldot (lident, swap_prefix name)
-        | Lident name -> Lident (swap_prefix name)
-        | Lapply (_, _) -> assert false
-      in
-      let lident_name i = Longident.flatten i |> String.concat "." in
-      Some (self#relit_literal (lident_name ident) source)
+      Some (self#relit_literal (relit_swap_prefix lident) source)
     | _ -> None
 
   method simple_get_application x =
@@ -7206,22 +7215,16 @@ let printer = object(self:'self)
             {pstr_desc = Pstr_module {pmb_name = {txt = nonterminal_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_expr; _}; _} ::
           _ ); _ } ->
-            let convert name =
-              let index = String.index name '_' + 1 in
-              String.sub name index (String.length name - index)
-              |> Str.split (Str.regexp "__RelitInternal_dot__")
-              |> String.concat "."
-            in
             let body = makeLetSequence [
-              makeList ~sep:(Sep " ") [atom "lexer"; atom (convert lexer_name);
+              makeList ~sep:(Sep " ") [atom "lexer"; atom (relit_convert lexer_name);
                                       atom "and"; atom "parser";
                                       makeList [
-                                        atom (convert parser_name);
+                                        atom (relit_convert parser_name);
                                         atom ".";
-                                        atom (convert nonterminal_name);
+                                        atom (relit_convert nonterminal_name);
                                       ];
                                       atom "in";
-                                      atom (convert package_name)];
+                                      atom (relit_convert package_name)];
               makeList ~sep:(Sep " ") [
                   atom "dependencies";
                   atom "=";
@@ -7229,7 +7232,12 @@ let printer = object(self:'self)
             ] in
             makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";
                                      self#core_type core_type; body ]
-            (* raise (Failure (convert parser_name)) *)
+    | {pmod_desc = Pmod_ident {txt = ident; _ }; _} ->
+        makeList ~sep:(Sep " ") [
+          atom "notation" ;
+          atom name;
+          atom "=";
+          atom (relit_swap_prefix ident) ]
 
     | _ -> raise Not_found
 

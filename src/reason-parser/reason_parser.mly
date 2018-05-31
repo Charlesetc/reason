@@ -1756,6 +1756,17 @@ structure_item:
     | item_attributes opt_LET_MODULE_ident module_binding_body
       { let loc = mklocation $symbolstartpos $endpos in
         mkstr(Pstr_module (Mb.mk $2 $3 ~attrs:$1 ~loc)) }
+    | item_attributes NOTATION name = RELIT_IDENT EQUAL old = RELIT_IDENT
+      { let loc = mklocation $symbolstartpos $endpos in
+        let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+        let lident = { txt = Lident ("RelitInternalDefn_" ^ old) ; loc } in
+        mkstr(Pstr_module (Mb.mk name (Mod.ident lident) ~loc)) }
+    | item_attributes NOTATION name = RELIT_IDENT EQUAL
+      lident = mod_longident DOT old = RELIT_IDENT
+      { let loc = mklocation $symbolstartpos $endpos in
+        let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+        let lident = { txt = Ldot (lident, ("RelitInternalDefn_" ^ old)) ; loc } in
+        mkstr(Pstr_module (Mb.mk name (Mod.ident lident) ~loc)) }
     | item_attributes NOTATION name = RELIT_IDENT
       kwd1 = LIDENT core_type = core_type LBRACE
         LEXER lexer = mod_longident
@@ -1772,7 +1783,7 @@ structure_item:
         LEXER lexer = mod_longident
         AND PARSER parser_ = mod_longident DOT nonterminal = LIDENT
         IN package = lowercase_longident SEMI
-        kwd2 = LIDENT EQUAL md_expr = module_expr_structure
+        kwd2 = LIDENT EQUAL md_expr = module_expr_structure SEMI
       RBRACE
       {
         let loc = mklocation $symbolstartpos $endpos in
