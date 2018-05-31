@@ -1756,27 +1756,26 @@ structure_item:
     | item_attributes NOTATION name = RELIT_IDENT
       kwd1 = LIDENT core_type = core_type LBRACE
         LEXER lexer = mod_longident
-        AND PARSER parser_ = mod_longident DOT nonterminal = LIDENT
-        IN package = lowercase_longident SEMI
+        PARSER parser_ = mod_longident DOT nonterminal = LIDENT
+        IN kwd2 = LIDENT package = lowercase_longident SEMI
       RBRACE
       { let loc = mklocation $symbolstartpos $endpos in
-        if not (String.equal kwd1 "at") then
-          raise (Failure "supposed to be at");
+        if not (String.equal kwd1 "at") then raise (Failure "supposed to be at");
+        if not (String.equal kwd2 "package") then raise (Failure "supposed to be package");
         mknotation ~loc ~name ~structure:[] ~lexer ~nonterminal
                    ~parser_ ~package ~core_type }
     | item_attributes NOTATION name = RELIT_IDENT
       kwd1 = LIDENT core_type = core_type LBRACE
         LEXER lexer = mod_longident
-        AND PARSER parser_ = mod_longident DOT nonterminal = LIDENT
-        IN package = lowercase_longident SEMI
-        kwd2 = LIDENT EQUAL md_expr = module_expr_structure SEMI
+        PARSER parser_ = mod_longident DOT nonterminal = LIDENT
+        IN kwd2 = LIDENT package = lowercase_longident SEMI
+        kwd3 = LIDENT EQUAL md_expr = module_expr_structure SEMI
       RBRACE
       {
         let loc = mklocation $symbolstartpos $endpos in
-        if not (String.equal kwd1 "at") then
-          raise (Failure "supposed to be at");
-        if not (String.equal kwd2 "dependencies") then
-          raise (Failure "supposed to be dependencies");
+        if not (String.equal kwd1 "at") then raise (Failure "supposed to be at");
+        if not (String.equal kwd2 "package") then raise (Failure "supposed to be package");
+        if not (String.equal kwd3 "dependencies") then raise (Failure "supposed to be dependencies");
         let structure = match md_expr.pmod_desc with
             | Pmod_structure structure -> structure
             | _ -> raise (Failure "dependencies in a notation is supposed to be a structure.")
