@@ -7236,13 +7236,13 @@ let printer = object(self:'self)
           _ ); _ } ->
             let body = makeLetSequence [
               makeList ~sep:(Sep " ") [atom "lexer"; atom (relit_convert lexer_name);
-                                      atom "and"; atom "parser";
+                                      atom "parser";
                                       makeList [
                                         atom (relit_convert parser_name);
                                         atom ".";
                                         atom (relit_convert nonterminal_name);
                                       ];
-                                      atom "in";
+                                      atom "in"; atom "package";
                                       atom (relit_convert package_name)];
               makeList ~sep:(Sep " ") [
                   atom "dependencies";
