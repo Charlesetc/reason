@@ -2570,6 +2570,22 @@ seq_expr_no_seq:
 | expr SEMI? { $1 }
 | opt_LET_MODULE_ident module_binding_body SEMI seq_expr
   { mkexp (Pexp_letmodule($1, $2, $4)) }
+| item_attributes LET? NOTATION name = RELIT_IDENT EQUAL
+    lident = mod_longident DOT old = RELIT_IDENT SEMI se = seq_expr
+  { 
+    let loc = mklocation $symbolstartpos $endpos in
+    let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+    let lident = { txt = Ldot (lident, ("RelitInternalDefn_" ^ old)) ; loc } in
+    Exp.letmodule name (Mod.ident lident) ~loc se
+  }
+| item_attributes LET? NOTATION name = RELIT_IDENT EQUAL
+    old = RELIT_IDENT SEMI se = seq_expr
+  { 
+    let loc = mklocation $symbolstartpos $endpos in
+    let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+    let lident = { txt = Lident ("RelitInternalDefn_" ^ old) ; loc } in
+    Exp.letmodule name (Mod.ident lident) ~loc se
+  }
 | item_attributes LET? OPEN override_flag as_loc(mod_longident) SEMI seq_expr
   { let exp = mkexp (Pexp_open($4, $5, $7)) in
     { exp with pexp_attributes = $1 }

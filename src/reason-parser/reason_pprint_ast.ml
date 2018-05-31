@@ -5282,6 +5282,25 @@ let printer = object(self:'self)
           } in
           processLetList ((loc, layout)::acc) e
         | ([], Pexp_letmodule (s, me, e)) ->
+            let relit_prefix = "RelitInternalDefn_" in
+            let plen = String.length relit_prefix in
+            if (String.length s.txt > plen)
+               && String.sub s.txt 0 plen = relit_prefix
+            then
+              (* this is a relit notation *)
+              let name = relit_swap_prefix (Lident s.txt) in
+
+              let bindingName = atom name in
+              let module_name = match me.pmod_desc with
+                | Pmod_ident locident -> relit_swap_prefix locident.txt
+                | _ -> raise (Failure "let notations must be aliases")
+              in
+              let layout = makeList ~sep:(Sep " ") [
+                  atom "notation" ; atom name ; atom "=";
+                  atom module_name
+                ] in
+              processLetList ((s.loc, layout)::acc) e
+            else
             let prefixText = "module" in
             let bindingName = atom ~loc:s.loc s.txt in
             let moduleExpr = me in
@@ -5295,12 +5314,12 @@ let printer = object(self:'self)
             (* Just like the bindings, have to synthesize a location since the
              * Pexp location is parsed (potentially) beginning with the open
              * brace {} in the let sequence. *)
-          let layout = source_map ~loc:letModuleLoc letModuleLayout in
-        let (_, return) = self#curriedFunctorPatternsAndReturnStruct moduleExpr in
-          let loc = {
-            letModuleLoc with
-            loc_end = return.pmod_loc.loc_end
-          } in
+            let layout = source_map ~loc:letModuleLoc letModuleLayout in
+            let (_, return) = self#curriedFunctorPatternsAndReturnStruct moduleExpr in
+            let loc = {
+              letModuleLoc with
+              loc_end = return.pmod_loc.loc_end
+            } in
            processLetList ((loc, layout)::acc) e
         | ([], Pexp_letexception (extensionConstructor, expr)) ->
             let exc = self#exception_declaration extensionConstructor in
