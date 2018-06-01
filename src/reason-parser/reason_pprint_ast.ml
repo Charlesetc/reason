@@ -7298,8 +7298,8 @@ let printer = object(self:'self)
     | {pmod_desc =  Pmod_structure 
           (
             {pstr_desc = Pstr_type (_, [{ptype_manifest = Some core_type; _}]); _ } ::
-            {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = package_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = nonterminal_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_expr; _}; _} ::
