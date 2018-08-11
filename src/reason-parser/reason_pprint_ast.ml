@@ -7228,36 +7228,46 @@ let printer = object(self:'self)
     | {pmod_desc =  Pmod_structure 
           (
             {pstr_desc = Pstr_type (_, [{ptype_manifest = Some core_type; _}]); _ } ::
-            {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = parser_name ; _ } ; _}; _ } ::
+            {pstr_desc = Pstr_module {pmb_name = {txt = lexer_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = package_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_name = {txt = nonterminal_name ; _ } ; _}; _ } ::
             {pstr_desc = Pstr_module {pmb_expr; _}; _} ::
           _ ); _ } ->
-            let body = makeLetSequence [
-              makeList ~sep:(Sep " ") [atom "lexer"; atom (relit_convert lexer_name);
-                                      atom "parser";
-                                      makeList [
-                                        atom (relit_convert parser_name);
-                                        atom ".";
-                                        atom (relit_convert nonterminal_name);
-                                      ];
-                                      atom "in"; atom "package";
-                                      atom (relit_convert package_name)];
-              makeList ~sep:(Sep " ") [
-                  atom "dependencies";
-                  atom "=";
-                  self#module_expr pmb_expr];
-            ] in
-            makeList ~sep:(Sep " ") [ atom "notation"; atom name; atom "at";
-                                     self#core_type core_type; body ]
+            let splist = makeList ~sep:(Sep " ") ~break:Layout.Never in
+            let first =
+              splist [
+                atom "notation";
+                atom name;
+                atom "at";
+                self#core_type core_type;
+              ]
+            in
+            let second =
+              makeList ~sep:(SepFinal (";", ";")) ~wrap:("{", "}") ~break:Always_rec [
+                makeList ~inline:(true, true) ~break:Always_rec [
+                  splist [ atom "lexer"; atom (relit_convert lexer_name)];
+                  splist [ atom "parser";
+                                        makeList [
+                                          atom (relit_convert parser_name);
+                                          atom ".";
+                                          atom (relit_convert nonterminal_name); ]];
+                  splist [
+                                        atom "in"; atom "package";
+                                        atom (relit_convert package_name)];
+                ];
+                label ~space:true
+                  (splist [ atom "dependencies"; atom "="])
+                  (self#module_expr pmb_expr);
+              ]
+            in
+            label ~space:true first second
     | {pmod_desc = Pmod_ident {txt = ident; _ }; _} ->
         makeList ~sep:(Sep " ") [
           atom "notation" ;
           atom name;
           atom "=";
           atom (relit_swap_prefix ident) ]
-
     | _ -> raise Not_found
 
   (* TODO: TODOATTRIBUTES: Structure items don't have attributes, but each
