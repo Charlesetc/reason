@@ -3337,6 +3337,9 @@ let printer = object(self:'self)
   method relit_literal name body =
     wrap (fun ppf _ -> Format.fprintf ppf "%s `(%s)`" name body) ()
 
+  method relit_open_literal body =
+    wrap (fun ppf _ -> Format.fprintf ppf "`(%s)`" body) ()
+
   method relit_expression x =
     match x.pexp_desc with
     | Pexp_apply (
@@ -3345,7 +3348,9 @@ let printer = object(self:'self)
               Some {pexp_desc = Pexp_tuple [_ ;
                 {pexp_desc =
                   Pexp_constant (Pconst_string (source, _)); _}]; _} )})]) ->
-      Some (self#relit_literal (relit_swap_prefix lident) source)
+      if Longident.last lident = "RelitInternalOpen"
+      then Some (self#relit_open_literal source)
+      else Some (self#relit_literal (relit_swap_prefix lident) source)
     | _ -> None
 
   method simple_get_application x =
@@ -5290,7 +5295,6 @@ let printer = object(self:'self)
               (* this is a relit notation *)
               let name = relit_swap_prefix (Lident s.txt) in
 
-              let bindingName = atom name in
               let module_name = match me.pmod_desc with
                 | Pmod_ident locident -> relit_swap_prefix locident.txt
                 | _ -> raise (Failure "let notations must be aliases")
@@ -5300,6 +5304,16 @@ let printer = object(self:'self)
                   atom module_name
                 ] in
               processLetList ((s.loc, layout)::acc) e
+            else if s.txt = "RelitInternalOpen" then
+              let module_name = match me.pmod_desc with
+                | Pmod_ident locident -> relit_swap_prefix locident.txt
+                | _ -> raise (Failure "internally opened notations must be aliases")
+              in
+              (s.loc, makeList  [
+                makeList [atom module_name; atom ".("];
+                makeList (self#letList e);
+                atom ")"
+              ]) :: acc
             else
             let prefixText = "module" in
             let bindingName = atom ~loc:s.loc s.txt in

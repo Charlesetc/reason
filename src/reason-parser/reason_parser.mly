@@ -2574,7 +2574,7 @@ seq_expr_no_seq:
   { 
     let loc = mklocation $symbolstartpos $endpos in
     let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
-    let lident = { txt = Ldot (lident, ("RelitInternalDefn_" ^ old)) ; loc } in
+    let lident = {txt = Ldot (lident, ("RelitInternalDefn_" ^ old)); loc} in
     Exp.letmodule name (Mod.ident lident) ~loc se
   }
 | item_attributes LET? NOTATION name = RELIT_IDENT EQUAL
@@ -2582,7 +2582,7 @@ seq_expr_no_seq:
   { 
     let loc = mklocation $symbolstartpos $endpos in
     let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
-    let lident = { txt = Lident ("RelitInternalDefn_" ^ old) ; loc } in
+    let lident = {txt = Lident ("RelitInternalDefn_" ^ old); loc} in
     Exp.letmodule name (Mod.ident lident) ~loc se
   }
 | item_attributes LET? OPEN override_flag as_loc(mod_longident) SEMI seq_expr
@@ -3134,12 +3134,39 @@ parenthesized_expr:
                            pexp_attributes = [mkloc "relit" loc, PSig []];
                            pexp_desc = construct }]))
     }
+  | RELIT_QUOTED
+    {
+      let (source, loc) = $1 in
+      let construct =
+        Pexp_construct (
+          mkloc (Ldot (Lident ("RelitInternalOpen"), "Call")) loc,
+          Some (mkexp (Pexp_tuple [
+              mkexp (Pexp_constant (Pconst_string
+                  ("You're using relit syntax without the relit ppx!", None)));
+              mkexp (Pexp_constant (Pconst_string (source, None)))
+            ]))
+        )
+      in
+      mkexp (Pexp_apply (mkexp (Pexp_ident (mkloc (Lident "raise") loc)),
+                         [Asttypes.Nolabel,
+                          {pexp_loc = loc;
+                           pexp_attributes = [mkloc "relit" loc, PSig []];
+                           pexp_desc = construct }]))
+    }
   | as_loc(LPAREN) expr_list as_loc(error)
     { unclosed_exp (with_txt $1 "(") (with_txt $3 ")") }
   | E as_loc(POSTFIXOP)
     { mkexp(Pexp_apply(mkoperator $2, [Nolabel, $1])) }
   | as_loc(mod_longident) DOT LPAREN expr_list RPAREN
     { mkexp(Pexp_open(Fresh, $1, may_tuple $startpos($3) $endpos($5) $4)) }
+  | RELIT_IDENT DOT LPAREN expr_list RPAREN
+    {
+      let loc = mklocation $symbolstartpos $endpos in
+      let module_name = {txt = "RelitInternalOpen"; loc} in
+      let lident = {txt = Lident ("RelitInternalDefn_" ^ $1); loc} in
+      let expr = may_tuple $startpos($3) $endpos($5) $4 in
+      Exp.letmodule module_name (Mod.ident lident) ~loc expr
+    }
   | mod_longident DOT as_loc(LPAREN) expr_list as_loc(error)
     { unclosed_exp (with_txt $3 "(") (with_txt $5 ")") }
   | E DOT as_loc(label_longident)
