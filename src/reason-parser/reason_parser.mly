@@ -2014,6 +2014,38 @@ signature_item:
     { let loc = mklocation $symbolstartpos $endpos in
       Psig_modtype (Mtd.mk $4 ~typ:$5 ~loc ~attrs:$1)
     }
+  | item_attributes NOTATION name = RELIT_IDENT EQUAL
+      old = RELIT_IDENT
+      { let loc = mklocation $symbolstartpos $endpos in
+        let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+        let lident = { txt = Lident ("RelitInternalDefn_" ^ old) ; loc } in
+        Psig_module
+        { pmd_name = name
+        ; pmd_loc = loc
+        ; pmd_attributes = []
+        ; pmd_type =
+          { pmty_desc = Pmty_alias lident
+          ; pmty_loc = loc
+          ; pmty_attributes = []
+          }
+        }
+      }
+  | item_attributes NOTATION name = RELIT_IDENT EQUAL
+      lident = mod_longident DOT old = RELIT_IDENT
+      { let loc = mklocation $symbolstartpos $endpos in
+        let name = {txt = "RelitInternalDefn_" ^ name ; loc} in
+        let lident = { txt = Ldot (lident, ("RelitInternalDefn_" ^ old)) ; loc } in
+        Psig_module
+        { pmd_name = name
+        ; pmd_loc = loc
+        ; pmd_attributes = []
+        ; pmd_type =
+          { pmty_desc = Pmty_alias lident
+          ; pmty_loc = loc
+          ; pmty_attributes = []
+          }
+        }
+      }
   | open_statement
     { Psig_open $1 }
   | item_attributes INCLUDE module_type

@@ -6876,7 +6876,35 @@ let printer = object(self:'self)
                  (class_description ~class_keyword:true x)::
                  (List.map class_description xs)
             )
-        | Psig_module {pmd_name; pmd_type={pmty_desc=Pmty_alias alias}; pmd_attributes} ->
+        | Psig_module {pmd_name; pmd_type={pmty_desc=Pmty_alias alias};
+        pmd_attributes; pmd_loc} ->
+
+            let relit_prefix = "RelitInternalDefn_" in
+            let plen = String.length relit_prefix in
+            if (String.length pmd_name.txt > plen)
+               && String.sub pmd_name.txt 0 plen = relit_prefix
+            then
+              (* this is a relit notation *)
+              let {stdAttrs; docAttrs} =
+                partitionAttributes ~partDoc:true pmd_attributes
+              in
+              let layout =
+                self#attach_std_item_attrs stdAttrs @@
+                label ~space:true
+                  (makeList ~postSpace:true [
+                     atom "notation";
+                     atom (relit_swap_prefix (Longident.Lident pmd_name.txt));
+                     atom "="
+                   ])
+                  (atom (relit_swap_prefix alias.txt))
+              in
+              self#attachDocAttrsToLayout
+                ~stdAttrs
+                ~docAttrs
+                ~loc:pmd_name.loc
+                ~layout
+                ()
+            else
             let {stdAttrs; docAttrs} =
               partitionAttributes ~partDoc:true pmd_attributes
             in
