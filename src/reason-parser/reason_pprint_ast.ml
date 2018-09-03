@@ -3356,7 +3356,7 @@ let printer = object(self:'self)
     match x.pexp_desc with
     | Pexp_apply (
         {pexp_desc = Pexp_ident {txt = Lident "raise"; _}},
-        [(_, { pexp_desc = Pexp_construct ({txt = Ldot (lident, "Call"); _},
+        [(_, { pexp_desc = Pexp_construct ({txt = Ldot (lident, "App"); _},
               Some {pexp_desc = Pexp_tuple [_ ;
                 {pexp_desc =
                   Pexp_constant (Pconst_string (source, _)); _}]; _} )})]) ->
