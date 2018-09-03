@@ -1796,6 +1796,24 @@ structure_item:
         mkstr(Pstr_modtype (Mtd.mk $5 ~typ:$6 ~attrs:$1 ~loc)) }
     | open_statement
       { mkstr(Pstr_open $1) }
+    | attrs = item_attributes OPEN NOTATION relit_part = RELIT_IDENT
+      {
+        let loc = mklocation $symbolstartpos $endpos in
+        let lident = { txt = Lident ("RelitInternalDefn_" ^ relit_part) ; loc } in
+        let m_expr = Mod.ident ~loc lident in
+        let open_name = {txt = "RelitInternalOpen"; loc} in
+        let module_binding = Mb.mk ~attrs ~loc open_name m_expr in
+        mkstr(Pstr_module module_binding)
+      }
+    | attrs = item_attributes OPEN NOTATION lident = mod_longident DOT relit_part = RELIT_IDENT
+      {
+        let loc = mklocation $symbolstartpos $endpos in
+        let lident = { txt = Ldot (lident, ("RelitInternalDefn_" ^ relit_part)) ; loc } in
+        let m_expr = Mod.ident ~loc lident in
+        let open_name = {txt = "RelitInternalOpen"; loc} in
+        let module_binding = Mb.mk ~attrs ~loc open_name m_expr in
+        mkstr(Pstr_module module_binding)
+      }
     | item_attributes CLASS class_declaration_details and_class_declaration*
       { let (ident, binding, virt, params) = $3 in
         let loc = mklocation $symbolstartpos $endpos($3) in

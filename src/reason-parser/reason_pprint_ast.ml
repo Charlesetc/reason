@@ -2297,6 +2297,18 @@ let relit_convert ?prefix:(prefix = true) name =
   |> Str.split (Str.regexp "__RelitInternal_dot__")
   |> String.concat "."
 
+let remove_relit_prefix identifier =
+  let relit_prefix = "RelitInternalDefn_" in
+  let plen = String.length relit_prefix in
+  if (String.length identifier > plen) && String.sub identifier 0 plen = relit_prefix
+  then Some ("$" ^ String.sub identifier plen (String.length identifier - plen))
+  else None
+
+let starts_with_relit_internal_defn identifier =
+  match remove_relit_prefix identifier with
+  | Some _ -> true
+  | None -> false
+
 let relit_swap_prefix lident =
   let swap_prefix name = 
     let prefix = "RelitInternalDefn_" in
@@ -5287,10 +5299,7 @@ let printer = object(self:'self)
           } in
           processLetList ((loc, layout)::acc) e
         | ([], Pexp_letmodule (s, me, e)) ->
-            let relit_prefix = "RelitInternalDefn_" in
-            let plen = String.length relit_prefix in
-            if (String.length s.txt > plen)
-               && String.sub s.txt 0 plen = relit_prefix
+            if starts_with_relit_internal_defn s.txt 
             then
               (* this is a relit notation *)
               let name = relit_swap_prefix (Lident s.txt) in
@@ -6878,11 +6887,7 @@ let printer = object(self:'self)
             )
         | Psig_module {pmd_name; pmd_type={pmty_desc=Pmty_alias alias};
         pmd_attributes; pmd_loc} ->
-
-            let relit_prefix = "RelitInternalDefn_" in
-            let plen = String.length relit_prefix in
-            if (String.length pmd_name.txt > plen)
-               && String.sub pmd_name.txt 0 plen = relit_prefix
+            if starts_with_relit_internal_defn pmd_name.txt
             then
               (* this is a relit notation *)
               let {stdAttrs; docAttrs} =
@@ -7405,19 +7410,24 @@ let printer = object(self:'self)
         | Pstr_typext te -> (self#type_extension te)
         | Pstr_exception ed -> (self#exception_declaration ed)
         | Pstr_module x ->
-            let relit_prefix = "RelitInternalDefn_" in
-            let plen = String.length relit_prefix in
             let module_name = x.pmb_name.txt in
-            if (String.length module_name > plen)
-               && String.sub module_name 0 plen = relit_prefix
-            then
-              let name = "$" ^
-                String.sub module_name plen (String.length module_name - plen) in
-              self#notation name x.pmb_expr
-            else
-              let bindingName = atom ~loc:x.pmb_name.loc module_name in
-              self#attach_std_item_attrs x.pmb_attributes @@
-              self#let_module_binding "module" bindingName x.pmb_expr
+            begin match remove_relit_prefix module_name with
+            | Some name -> self#notation name x.pmb_expr
+            | None ->
+              if module_name = "RelitInternalOpen" then
+                match x.pmb_expr.pmod_desc with
+                | Pmod_ident lident ->
+                    makeList ~sep:(Sep " ") [
+                      atom ("open");
+                      atom ("notation");
+                      atom (relit_swap_prefix lident.txt)
+                    ]
+                | _ -> raise (NotPossible "RelitInternalOpen should always be an alias")
+              else
+                let bindingName = atom ~loc:x.pmb_name.loc module_name in
+                self#attach_std_item_attrs x.pmb_attributes @@
+                self#let_module_binding "module" bindingName x.pmb_expr
+            end
         | Pstr_open od ->
             self#attach_std_item_attrs od.popen_attributes @@
             makeList ~postSpace:true [
