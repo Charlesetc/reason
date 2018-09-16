@@ -390,7 +390,7 @@ let mknotation ~name ~loc ~structure:dependencies ~nonterminal
     Str.module_ (Mb.mk nonterminal_name (Mod.structure []) );
     Str.module_ (Mb.mk {txt = "Dependencies"; loc}
                        (Mod.structure dependencies));
-    Str.exception_ {pext_name = {txt = "App"; loc};
+    Str.exception_ {pext_name = {txt = "Apply"; loc};
                     pext_kind = exn_type;
                     pext_loc = loc;
                     pext_attributes = []};
@@ -3151,7 +3151,7 @@ parenthesized_expr:
       let (source, loc) = tlm in
       let construct =
         Pexp_construct (
-          mkloc (Ldot (Lident ("RelitInternalDefn_" ^ ident), "App")) loc,
+          mkloc (Ldot (Lident ("RelitInternalDefn_" ^ ident), "Apply")) loc,
           Some (mkexp (Pexp_tuple [
               mkexp (Pexp_constant (Pconst_string
                   ("You're using relit syntax without the relit ppx!", None)));
@@ -3170,7 +3170,7 @@ parenthesized_expr:
       let (source, loc) = tlm in
       let construct =
         Pexp_construct (
-          mkloc (Ldot (Ldot (longident, ("RelitInternalDefn_" ^ ident)), "App")) loc,
+          mkloc (Ldot (Ldot (longident, ("RelitInternalDefn_" ^ ident)), "Apply")) loc,
           Some (mkexp (Pexp_tuple [
               mkexp (Pexp_constant (Pconst_string
                   ("You're using relit syntax without the relit ppx!", None)));
@@ -3189,7 +3189,7 @@ parenthesized_expr:
       let (source, loc) = $1 in
       let construct =
         Pexp_construct (
-          mkloc (Ldot (Lident ("RelitInternalOpen"), "App")) loc,
+          mkloc (Ldot (Lident ("RelitInternalOpen"), "Apply")) loc,
           Some (mkexp (Pexp_tuple [
               mkexp (Pexp_constant (Pconst_string
                   ("You're using relit syntax without the relit ppx!", None)));
