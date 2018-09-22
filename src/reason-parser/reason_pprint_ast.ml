@@ -6816,7 +6816,7 @@ let printer = object(self:'self)
                  (List.map class_description xs)
             )
         | Psig_module {pmd_name; pmd_type={pmty_desc=Pmty_alias alias};
-        pmd_attributes; pmd_loc} ->
+        pmd_attributes; _} ->
             if starts_with_relit_internal_defn pmd_name.txt
             then
               (* this is a relit notation *)
