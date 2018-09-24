@@ -2,6 +2,6 @@
 
 (library
  ((name reason.easy_format)
-  (public_name reason.easy_format)
+  (public_name relit-reason.easy_format)
   (wrapped false)
   (flags (:standard -w -9-27))))
