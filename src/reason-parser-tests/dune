@@ -1,3 +1,4 @@
 (executable
  (name testOprint)
- (libraries reason))
+ (public_name testOprint)
+ (libraries relit-reason))
